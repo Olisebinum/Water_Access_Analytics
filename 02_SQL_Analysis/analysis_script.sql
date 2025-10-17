@@ -1,57 +1,54 @@
 -- =====================================================================
 -- 🧮 WATER ACCESS ANALYTICS – SQL ANALYSIS PIPELINE
 -- Author: Olise Ebinum
--- Description: 
---   This SQL analysis script explores data discrepancies between auditors 
---   and surveyors in recorded water quality assessments. It identifies 
---   inconsistencies, validates data integrity, and highlights human 
---   reporting errors through step-by-step joins, filters, CTEs, and text 
---   analysis.
---
--- Skills Demonstrated:
---   ✅ Data integrity validation and relational joins
---   ✅ Aggregation, filtering, and conditional logic
---   ✅ CTE design for modular analytical workflows
---   ✅ Error detection, ranking, and text pattern matching
---
 -- Database: md_water_services
+-- Description:
+--   This SQL pipeline investigates discrepancies between auditor and
+--   surveyor-reported water quality scores. The goal is to validate
+--   data integrity, identify employee-level inconsistencies, and
+--   detect potential reporting bias or misconduct.
+--
+-- Key Skills Demonstrated:
+--   ✅ Data validation and relational joins
+--   ✅ Aggregation, filtering, and conditional logic
+--   ✅ Common Table Expressions (CTEs) for modular analysis
+--   ✅ Error detection, ranking, and keyword text analysis
 -- =====================================================================
 
 
 -- ================================================================
--- STEP 0: Preview the auditor_report table
--- Purpose: Verify data is correctly loaded and accessible.
+-- STEP 0: Preview base data
+-- Purpose: Quick sanity check – confirm the table is loaded properly.
 -- ================================================================
 SELECT * FROM md_water_services.auditor_report;
 
 
 -- ================================================================
--- Activate database context
+-- Activate working database context
 -- ================================================================
-USE md_water_services; 
+USE md_water_services;
 
 
 -- ================================================================
--- 🔹 PART 1: Basic Table Join
--- Join auditor_report with visits to link inspection locations
+-- 🔹 PART 1: Linking Auditor and Visit Records
+-- Objective: Connect audit reports to corresponding site visits.
 -- ================================================================
 SELECT 
-	auditor_report.location_id  AS Auditor_Location,
+    auditor_report.location_id AS Auditor_Location,
     auditor_report.true_water_source_score,
     visits.location_id AS Visits_Location,
     visits.record_id
 FROM auditor_report
 INNER JOIN visits 
-    ON auditor_report.location_id = visits.location_id; 
-
+    ON auditor_report.location_id = visits.location_id;
 
 
 -- ================================================================
--- 🔹 PART 2: Join with Water Quality Table
--- Expands analysis by bringing in surveyor (subjective) quality scores
+-- 🔹 PART 2: Enrich data with Water Quality Scores
+-- Adds surveyor quality metrics for cross-comparison.
 -- ================================================================
 SELECT 
-	auditor_report.location_id  AS Auditor_Location,
+    auditor_report.location_id AS Auditor_Location,
     auditor_report.true_water_source_score,
     visits.location_id AS Visits_Location,
     visits.record_id,
@@ -60,15 +57,15 @@ FROM auditor_report
 INNER JOIN visits 
     ON auditor_report.location_id = visits.location_id 
 INNER JOIN water_quality
-    ON visits.record_id = water_quality.record_id; 
+    ON visits.record_id = water_quality.record_id;
 
 
 -- ================================================================
--- 🔹 PART 3: Comparing Scores (Auditor vs Surveyor)
--- Display both quality scores side-by-side for direct comparison
+-- 🔹 PART 3: Compare Auditor vs Surveyor Scores
+-- Lays the foundation for identifying discrepancies.
 -- ================================================================
 SELECT 
-	auditor_report.location_id  AS Location_ID,
+    auditor_report.location_id AS Location_ID,
     auditor_report.true_water_source_score AS Auditor_score,
     visits.record_id,
     subjective_quality_score AS Surveyor_score
@@ -76,13 +73,13 @@ FROM auditor_report
 INNER JOIN visits 
     ON auditor_report.location_id = visits.location_id 
 INNER JOIN water_quality
-    ON visits.record_id = water_quality.record_id; 
-
+    ON visits.record_id = water_quality.record_id;
 
 
 -- ================================================================
--- 🔹 PART 4: Identifying Matching Records
--- Shows where auditors and surveyors agree on water source quality
+-- 🔹 PART 4: Matching Score Analysis
+-- Objective: Identify cases where both scores agree.
+-- Insight: Useful for measuring data consistency rate.
 -- ================================================================
 SELECT 
     auditor_report.location_id AS Location_ID,
@@ -97,10 +94,9 @@ INNER JOIN water_quality
 WHERE water_quality.subjective_quality_score = auditor_report.true_water_source_score;
 
 
-
 -- ================================================================
--- 🔹 PART 5: Filter to Single Visit Records
--- Removes multiple visit entries to ensure fair one-to-one comparison
+-- 🔹 PART 5: Filter for Single Visit Records
+-- Reason: Exclude sites visited multiple times to avoid duplicate bias.
 -- ================================================================
 SELECT 
     auditor_report.location_id AS Location_ID,
@@ -113,13 +109,13 @@ INNER JOIN visits
 INNER JOIN water_quality
     ON visits.record_id = water_quality.record_id
 WHERE water_quality.subjective_quality_score = auditor_report.true_water_source_score
-  AND visits.visit_count = 1; 
-
+  AND visits.visit_count = 1;
 
 
 -- ================================================================
--- 🔹 PART 6: Detecting Mismatched Scores (Errors)
--- Identify records where auditor and surveyor scores differ
+-- 🔹 PART 6: Detect Mismatched Records
+-- Purpose: Identify all sites where auditors and surveyors disagree.
+-- Insight: Returns 102 mismatched observations (data quality issue).
 -- ================================================================
 SELECT 
     auditor_report.location_id AS Location_ID,
@@ -132,13 +128,12 @@ INNER JOIN visits
 INNER JOIN water_quality
     ON visits.record_id = water_quality.record_id
 WHERE water_quality.subjective_quality_score != auditor_report.true_water_source_score
-  AND visits.visit_count = 1; 
-
+  AND visits.visit_count = 1;
 
 
 -- ================================================================
--- 🔹 PART 7: Comparing Water Source Types
--- Match type and scores to assess if discrepancies are source-specific
+-- 🔹 PART 7: Source Type Comparison
+-- Objective: Determine if specific water source types produce more errors.
 -- ================================================================
 SELECT 
     auditor_report.location_id AS Location_ID,
@@ -155,13 +150,12 @@ INNER JOIN water_quality
 INNER JOIN water_source
 	ON visits.source_id = water_source.source_id
 WHERE water_quality.subjective_quality_score = auditor_report.true_water_source_score
-  AND visits.visit_count = 1; 
-
+  AND visits.visit_count = 1;
 
 
 -- ================================================================
--- 🔹 PART 8: Linking Records to Employees
--- Associates inspection discrepancies with responsible field employees
+-- 🔹 PART 8: Link Errors to Employees
+-- Tracks which employee handled each visit.
 -- ================================================================
 SELECT 
     auditor_report.location_id AS Location_ID,
@@ -179,10 +173,9 @@ INNER JOIN water_source
 WHERE water_quality.subjective_quality_score != auditor_report.true_water_source_score;
 
 
-
 -- ================================================================
--- 🔹 PART 9: Replace Employee ID with Names
--- Makes results human-readable for reporting and accountability
+-- 🔹 PART 9: Add Employee Names for Readability
+-- Makes reporting human-friendly for stakeholder review.
 -- ================================================================
 SELECT 
     auditor_report.location_id AS Location_ID,
@@ -202,10 +195,9 @@ INNER JOIN employee
 WHERE water_quality.subjective_quality_score != auditor_report.true_water_source_score;
 
 
-
 -- ================================================================
--- 🔹 PART 10: Use CTE for Modular Comparison
--- Clean, reusable logic that isolates mismatched records
+-- 🔹 PART 10: Introduce CTE (Common Table Expression)
+-- Modularizes repeated join logic for further analysis.
 -- ================================================================
 WITH score_comparison AS (
     SELECT 
@@ -229,10 +221,9 @@ FROM score_comparison
 WHERE Surveyor_score != Auditor_score;
 
 
-
 -- ================================================================
--- 🔹 PART 11: Count Distinct Employees with Mistakes
--- Quantifies employees who entered inconsistent data
+-- 🔹 PART 11: Count Distinct Employees with Errors
+-- Measures breadth of the problem across the workforce.
 -- ================================================================
 WITH score_comparison AS (
     SELECT 
@@ -256,10 +247,9 @@ FROM score_comparison
 WHERE Surveyor_score != Auditor_score;
 
 
-
 -- ================================================================
--- 🔹 PART 12: Rank Employees by Mistake Count
--- Highlights employees with the most recording discrepancies
+-- 🔹 PART 12: Rank Employees by Mistake Frequency
+-- Identifies top offenders to target training or audits.
 -- ================================================================
 WITH score_comparison AS (
     SELECT 
@@ -284,20 +274,184 @@ SELECT
 FROM score_comparison
 WHERE Surveyor_score != Auditor_score
 GROUP BY employee_name
-ORDER BY mistake_count DESC; 
-
+ORDER BY mistake_count DESC;
 
 
 -- ================================================================
--- 🔹 PART 13-18: Evidence Gathering, Error Counts, 
---                Average Mistakes & Text Analysis
--- Includes view creation, aggregation, and keyword search (“cash”)
+-- 🔹 PART 13: Create a View of Incorrect Records
+-- Purpose: Persistent view for quality-control dashboards (Power BI).
 -- ================================================================
--- (Keep your remaining queries with inline comments here)
+CREATE VIEW Incorrect_records AS
+SELECT
+    auditor_report.location_id,
+    visits.record_id,
+    employee.employee_name,
+    auditor_report.true_water_source_score AS Auditor_score,
+    wq.subjective_quality_score AS Surveyor_score,
+    auditor_report.statements
+FROM auditor_report
+JOIN visits
+    ON auditor_report.location_id = visits.location_id
+JOIN water_quality AS wq
+    ON visits.record_id = wq.record_id
+JOIN employee
+    ON employee.assigned_employee_id = visits.assigned_employee_id
+WHERE visits.visit_count = 1
+  AND auditor_report.true_water_source_score != wq.subjective_quality_score;
+
+SELECT * FROM md_water_services.Incorrect_records;
+
+
+-- ================================================================
+-- 🔹 PART 14: Aggregate Error Counts per Employee
+-- Purpose: Quantify error distribution and identify training needs.
+-- ================================================================
+WITH error_count AS (
+    SELECT
+        employee_name,
+        COUNT(*) AS number_of_mistakes
+    FROM Incorrect_records
+    GROUP BY employee_name
+)
+SELECT * FROM error_count;
+
+
+-- ================================================================
+-- 🔹 PART 15: Compute Average Mistake Rate
+-- Benchmark performance against average accuracy.
+-- ================================================================
+WITH error_count AS (
+    SELECT
+        employee_name,
+        COUNT(*) AS number_of_mistakes
+    FROM Incorrect_records
+    GROUP BY employee_name
+)
+SELECT 
+    *,
+    (SELECT ROUND(AVG(number_of_mistakes), 2) FROM error_count) AS avg_mistake_count
+FROM error_count
+ORDER BY number_of_mistakes DESC;
+
+
+-- ================================================================
+-- 🔹 PART 16: Identify Top 4 High-Risk Employees
+-- Drills down into employees with the highest mistake counts.
+-- ================================================================
+WITH score_comparison AS (
+    SELECT 
+        auditor_report.location_id AS Location_ID,
+        visits.record_id,
+        employee.employee_name,
+        auditor_report.true_water_source_score AS Auditor_score,
+        water_quality.subjective_quality_score AS Surveyor_score
+    FROM auditor_report
+    INNER JOIN visits 
+        ON auditor_report.location_id = visits.location_id 
+    INNER JOIN water_quality
+        ON visits.record_id = water_quality.record_id
+    INNER JOIN water_source
+        ON visits.source_id = water_source.source_id
+    INNER JOIN employee
+        ON visits.assigned_employee_id = employee.assigned_employee_id
+    WHERE water_quality.subjective_quality_score != auditor_report.true_water_source_score
+),
+suspect_list AS (
+    SELECT 
+        employee_name,
+        COUNT(*) AS mistake_count
+    FROM score_comparison
+    GROUP BY employee_name
+    ORDER BY mistake_count DESC
+    LIMIT 4
+)
+SELECT sc.*
+FROM score_comparison AS sc
+JOIN suspect_list AS s
+    ON sc.employee_name = s.employee_name;
+
+
+-- ================================================================
+-- 🔹 PART 17: Combine Statements for Contextual Evidence
+-- Adds auditor remarks to support data interpretation.
+-- ================================================================
+WITH Incorrect_records AS (
+    SELECT 
+        auditor_report.location_id AS Location_ID,
+        visits.record_id,
+        employee.employee_name,
+        auditor_report.true_water_source_score AS Auditor_score,
+        water_quality.subjective_quality_score AS Surveyor_score,
+        auditor_report.statements
+    FROM auditor_report
+    INNER JOIN visits 
+        ON auditor_report.location_id = visits.location_id 
+    INNER JOIN water_quality
+        ON visits.record_id = water_quality.record_id
+    INNER JOIN water_source
+        ON visits.source_id = water_source.source_id
+    INNER JOIN employee
+        ON visits.assigned_employee_id = employee.assigned_employee_id
+    WHERE water_quality.subjective_quality_score != auditor_report.true_water_source_score
+),
+suspect_list AS (
+    SELECT 
+        employee_name,
+        COUNT(*) AS mistake_count
+    FROM Incorrect_records
+    GROUP BY employee_name
+    ORDER BY mistake_count DESC
+    LIMIT 4
+)
+SELECT *
+FROM Incorrect_records
+WHERE employee_name IN (SELECT employee_name FROM suspect_list);
+
+
+-- ================================================================
+-- 🔹 PART 18: Text Analysis (Keyword “cash”)
+-- Goal: Identify statements mentioning “cash” – potential bias or fraud.
+-- ================================================================
+WITH Incorrect_records AS (
+    SELECT 
+        auditor_report.location_id AS Location_ID,
+        visits.record_id,
+        employee.employee_name,
+        auditor_report.true_water_source_score AS Auditor_score,
+        water_quality.subjective_quality_score AS Surveyor_score,
+        auditor_report.statements
+    FROM auditor_report
+    INNER JOIN visits 
+        ON auditor_report.location_id = visits.location_id 
+    INNER JOIN water_quality
+        ON visits.record_id = water_quality.record_id
+    INNER JOIN water_source
+        ON visits.source_id = water_source.source_id
+    INNER JOIN employee
+        ON visits.assigned_employee_id = employee.assigned_employee_id
+    WHERE water_quality.subjective_quality_score != auditor_report.true_water_source_score
+),
+suspect_list AS (
+    SELECT 
+        employee_name,
+        COUNT(*) AS mistake_count
+    FROM Incorrect_records
+    GROUP BY employee_name
+    ORDER BY mistake_count DESC
+    LIMIT 4
+)
+SELECT *
+FROM Incorrect_records
+WHERE employee_name IN (SELECT employee_name FROM suspect_list)
+  AND LOWER(statements) LIKE '%cash%';
+
 
 -- ================================================================
 -- ✅ END OF ANALYSIS
--- Summary: Used joins, aggregations, CTEs, and text filtering 
---           to detect discrepancies, measure error rates, and 
---           assess employee reporting accuracy.
+-- Summary:
+--   ✔ Validated data reliability between auditor and surveyor reports
+--   ✔ Quantified employee-level inconsistencies
+--   ✔ Aggregated and benchmarked error rates
+--   ✔ Detected potential misconduct through keyword search
+--   ✔ Created reusable views for visualization in Power BI
 -- ================================================================
