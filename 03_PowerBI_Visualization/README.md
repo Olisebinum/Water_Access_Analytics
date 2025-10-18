@@ -41,43 +41,25 @@ Using the exported datasets from SQL (e.g., `combined_analysis_table`, `project_
 
 ## 🧩 Dashboard Structure  
 
-### 🗺️ **Page 1 – Overview Dashboard**
+### **Page 1 – Overview Dashboard**
 - Provincial summary of population served.  
 - Map visualization showing the distribution of water sources.  
-- KPIs for total functional sources, average queue time, and contamination rate.  
+- KPIs for total functional sources, average queue time, and contamination rate.
 
-📸 *Preview:*  
-![Overview Dashboard](images/overview_dashboard.png)
-
----
-
-### 🧾 **Page 2 – Data Quality and Validation**
+### **Page 2 – Data Quality and Validation**
 - Comparison of **Auditor vs Surveyor** scores.  
 - Bar chart of errors per employee.  
-- Heatmap identifying most error-prone locations.  
+- Heatmap identifying most error-prone locations.
 
-📸 *Preview:*  
-![Data Validation Dashboard](images/data_quality_dashboard.png)
-
----
-
-### 💧 **Page 3 – Source Performance**
+### **Page 3 – Source Performance**
 - Water source functionality by type (wells, taps, rivers).  
 - Queue time analysis and population served.  
-- Drill-through feature to explore town-level details.  
+- Drill-through feature to explore town-level details.
 
-📸 *Preview:*  
-![Source Performance Dashboard](images/source_performance_dashboard.png)
-
----
-
-### 🚧 **Page 4 – Project Progress Tracker**
+### **Page 4 – Project Progress Tracker**
 - Monitors the `Project_progress` table from SQL.  
 - Displays **status breakdowns** (Backlog, In Progress, Complete).  
-- Includes improvement suggestions like “Install UV Filter” or “Drill Well.”  
-
-📸 *Preview:*  
-![Project Progress Tracker](images/project_progress_dashboard.png)
+- Includes improvement suggestions (“Install UV filter”, “Drill Well”).  
 
 ---
 
@@ -105,19 +87,10 @@ Using the exported datasets from SQL (e.g., `combined_analysis_table`, `project_
 
 ---
 
-## 📸 Gallery Preview  
-
-| Overview | Data Quality | Source Performance | Project Progress |
-|-----------|---------------|--------------------|------------------|
-| ![Overview](images/overview_dashboard.png) | ![Quality](images/data_quality_dashboard.png) | ![Performance](images/source_performance_dashboard.png) | ![Progress](images/project_progress_dashboard.png) |
-
----
-
 ## 📜 Credits  
 **Project:** Water Access Analytics  
 **Developed by:** Olise Ebinum  
 **Integrated Tools:** SQL, Power BI, GitHub  
 
 ---
-
 
