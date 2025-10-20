@@ -1,12 +1,7 @@
----
-title: "Water Access Analytics - SQL Insights Notebook"
-author: "Olise Ebinum"
-output: html_document
----
 
 # 🧠 SQL ANALYTICS & INSIGHTS NOTEBOOK  
 ### Project: Water_Access_Analytics  
-
+**Author:** Olise Ebinum
 ---
 
 ## 🌍 Project Overview  
