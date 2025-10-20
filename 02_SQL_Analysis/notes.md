@@ -1,5 +1,5 @@
 
-# 🧠 SQL ANALYTICS & INSIGHTS NOTEBOOK  
+# 🧠 SQL ANALYTICS & INSIGHTS 
 ### Project: Water_Access_Analytics  
 **Author:** Olise Ebinum
 ---
