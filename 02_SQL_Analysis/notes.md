@@ -69,16 +69,6 @@ FROM location AS loc
 INNER JOIN visits AS v ON v.location_id = loc.location_id
 INNER JOIN water_source AS ws ON ws.source_id = v.source_id;
 
-
-📍 Step 2 — Filtering and Refinement
-```sql
-SELECT
-    loc.province_name, 
-    loc.town_name,
-    ws.type_of_water_source,
-    ws.number_of_people_served
-FROM location AS loc
-INNER JOIN visits AS v ON v.location_id = loc.location_id
-INNER JOIN water_source AS ws ON ws.source_id = v.source_id
-WHERE v.visit_count = 1;
+Insight:
+This integration connects every field visit to its specific location and water source, forming the foundation for pollution and performance analysis.
 
