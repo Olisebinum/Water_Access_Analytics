@@ -54,12 +54,26 @@ The schema is structured around **relational integrity** and **referential consi
 | **5️⃣ Insights & Action** | Generate project recommendations (e.g., filter installation) | Track through `project_progress` | Interactive dashboards |
 
 ---
+---
 
 ## 🧭 Entity Relationship Diagram (ERD)
 
 Below is the visual schema representation used in this project:
 
 ![Database ERD](./ERD_MD_Water_Services.png)
+
+This diagram illustrates how each table in the **`md_water_services`** database is interconnected:
+
+- **`location`** ↔ **`visits`** → connects every visit record to a specific community.
+- **`water_source`** ↔ **`visits`** → links each inspection to a water source.
+- **`employee`** ↔ **`visits`** → assigns a field officer or surveyor to each recorded visit.
+- **`well_pollution`** ↔ **`water_source`** → tracks contamination test results for specific sources.
+- **`water_quality`** ↔ **`visits`** → captures subjective water quality ratings per visit.
+- **`data_dictionary`** → provides metadata on column definitions and relationships.
+- **`global_water_access`** → offers external benchmarking data for comparative analysis.
+
+This ERD ensures **referential integrity** and provides the foundation for analytics, validation checks, and project improvement tracking within the `Water_Access_Analytics` system.
+
 
 
 
