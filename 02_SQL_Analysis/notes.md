@@ -1,5 +1,5 @@
 # 🧠 SQL ANALYTICS & INSIGHTS NOTEBOOK  
-### Project: Water_Access_Analytics  
+### Project: **Water_Access_Analytics**  
 **Author:** Olise Ebinum  
 
 ---
@@ -28,7 +28,7 @@ The SQL analysis aimed to:
 
 The relational schema `md_water_services` combines **operational**, **audit**, and **quality** data into one unified system.  
 
-**Core tables include:**
+**Core Tables:**
 - `location`: towns, provinces, and location types.  
 - `visits`: field visit logs and queue times.  
 - `water_source`: defines water source types and populations served.  
@@ -55,7 +55,7 @@ The relational schema `md_water_services` combines **operational**, **audit**, a
 
 ---
 
-## 🔍 Step 1: Data Integration (Joining Core Tables)
+## 🔍 Step 1 — Data Integration (Joining Core Tables)
 
 ```sql
 SELECT
@@ -69,12 +69,8 @@ FROM location AS loc
 INNER JOIN visits AS v ON v.location_id = loc.location_id
 INNER JOIN water_source AS ws ON ws.source_id = v.source_id;
 
-Insight:
-This integration connected every field visit to its specific location and water source, forming the foundation for later pollution and performance analysis.
 
-
-## 📍 Step 2 — Filtering and Refinement  
-
+📍 Step 2 — Filtering and Refinement
 ```sql
 SELECT
     loc.province_name, 
@@ -85,6 +81,4 @@ FROM location AS loc
 INNER JOIN visits AS v ON v.location_id = loc.location_id
 INNER JOIN water_source AS ws ON ws.source_id = v.source_id
 WHERE v.visit_count = 1;
-
-
 
