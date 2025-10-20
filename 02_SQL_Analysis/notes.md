@@ -232,7 +232,7 @@ This intelligent query generates actionable insights for improving each water so
 
 ---
 
-## ✅ Summary  
+## ✅ Key Achievement   
 
 The SQL pipeline successfully:  
 - Merged multi-table relationships into a coherent schema.  
