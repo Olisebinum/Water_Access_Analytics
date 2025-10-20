@@ -1,6 +1,11 @@
+---
+title: "Water Access Analytics - SQL Insights Notebook"
+author: "Olise Ebinum"
+output: html_document
+---
+
 # 🧠 SQL ANALYTICS & INSIGHTS NOTEBOOK  
-### Project: **Water_Access_Analytics**  
-**Author:** Olise Ebinum  
+### Project: Water_Access_Analytics  
 
 ---
 
@@ -8,8 +13,6 @@
 
 The **Water Access Analytics** project demonstrates a complete end-to-end SQL analytical workflow for understanding and improving community water access.  
 This notebook captures **technical reasoning**, **query logic**, and **key insights** from data exploration to validation — bridging structured data analysis and real-world decision support.
-
-The project integrates SQL queries across multiple tables, revealing **data quality issues, efficiency gaps, and contamination risks**, which were later visualized in Power BI.
 
 ---
 
@@ -28,14 +31,14 @@ The SQL analysis aimed to:
 
 The relational schema `md_water_services` combines **operational**, **audit**, and **quality** data into one unified system.  
 
-**Core Tables:**
-- `location`: towns, provinces, and location types.  
-- `visits`: field visit logs and queue times.  
-- `water_source`: defines water source types and populations served.  
-- `employee`: surveyor and auditor profiles.  
-- `auditor_report`: third-party accuracy checks.  
-- `water_quality`: subjective field ratings.  
-- `well_pollution`: lab-confirmed contamination results.  
+**Core tables include:**
+- `location`
+- `visits`
+- `water_source`
+- `employee`
+- `auditor_report`
+- `water_quality`
+- `well_pollution`
 
 **Analytical Views:**
 - `combined_analysis_table`
@@ -59,7 +62,7 @@ The relational schema `md_water_services` combines **operational**, **audit**, a
 
 ```sql
 SELECT
-	loc.province_name, 
+    loc.province_name, 
     loc.town_name,
     v.visit_count,
     v.location_id,
@@ -68,7 +71,362 @@ SELECT
 FROM location AS loc
 INNER JOIN visits AS v ON v.location_id = loc.location_id
 INNER JOIN water_source AS ws ON ws.source_id = v.source_id;
+```
 
-Insight:
+**Insight:**  
 This integration connects every field visit to its specific location and water source, forming the foundation for pollution and performance analysis.
 
+---
+
+## 📍 Step 2 — Filtering and Refinement  
+
+```sql
+SELECT
+    loc.province_name, 
+    loc.town_name,
+    ws.type_of_water_source,
+    ws.number_of_people_served
+FROM location AS loc
+INNER JOIN visits AS v ON v.location_id = loc.location_id
+INNER JOIN water_source AS ws ON ws.source_id = v.source_id
+WHERE v.visit_count = 1;
+```
+
+**Insight:**  
+Filtered multiple visits to ensure data consistency and represent only unique inspection records.
+
+---
+
+## 🧩 Step 3 — Building a Combined Analysis View  
+
+```sql
+CREATE VIEW combined_analysis_table AS
+SELECT
+    water_source.type_of_water_source AS source_type,
+    location.town_name,
+    location.province_name,
+    location.location_type,
+    water_source.number_of_people_served AS people_served,
+    visits.time_in_queue,
+    well_pollution.results
+FROM visits
+LEFT JOIN well_pollution ON well_pollution.source_id = visits.source_id
+INNER JOIN location ON location.location_id = visits.location_id
+INNER JOIN water_source ON water_source.source_id = visits.source_id
+WHERE visits.visit_count = 1;
+```
+
+**Insight:**  
+This view simplifies data analysis by combining multiple tables — ideal for creating Power BI dashboards.
+
+---
+
+## 🧮 Step 4 — Provincial Water Access Coverage  
+
+```sql
+WITH province_totals AS (
+    SELECT province_name, SUM(people_served) AS total_ppl_serv
+    FROM combined_analysis_table
+    GROUP BY province_name
+)
+SELECT
+    ct.province_name,
+    ROUND((SUM(CASE WHEN source_type = 'river' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS river,
+    ROUND((SUM(CASE WHEN source_type = 'shared_tap' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS shared_tap,
+    ROUND((SUM(CASE WHEN source_type = 'tap_in_home' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS tap_in_home
+FROM combined_analysis_table ct
+JOIN province_totals pt ON ct.province_name = pt.province_name
+GROUP BY ct.province_name
+ORDER BY ct.province_name;
+```
+
+**Insight:**  
+This aggregation quantifies access levels across provinces, identifying which regions rely heavily on shared or unsafe water sources.
+
+---
+
+## 🏙️ Step 5 — Town-Level Analysis  
+
+```sql
+WITH town_totals AS (
+    SELECT province_name, town_name, SUM(people_served) AS total_ppl_serv
+    FROM combined_analysis_table
+    GROUP BY province_name, town_name
+)
+SELECT
+    ct.province_name,
+    ct.town_name,
+    ROUND((SUM(CASE WHEN source_type = 'river' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS river,
+    ROUND((SUM(CASE WHEN source_type = 'shared_tap' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS shared_tap,
+    ROUND((SUM(CASE WHEN source_type = 'tap_in_home' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS tap_in_home
+FROM combined_analysis_table ct
+JOIN town_totals tt ON ct.province_name = tt.province_name AND ct.town_name = tt.town_name
+GROUP BY ct.province_name, ct.town_name
+ORDER BY ct.town_name;
+```
+
+**Insight:**  
+This identifies disparities in access at the town level — revealing areas that need urgent infrastructure attention.
+
+---
+
+## 📊 Step 6 — Identifying Problem Areas  
+
+```sql
+SELECT
+    province_name,
+    town_name,
+    ROUND(tap_in_home_broken / (tap_in_home_broken + tap_in_home) * 100, 0) AS pct_broken_taps
+FROM town_aggregated_water_access;
+```
+
+**Insight:**  
+Highlights towns where high proportions of households have broken taps, guiding resource allocation for maintenance and repairs.
+
+---
+
+## 🧰 Step 7 — Project Progress Tracking  
+
+```sql
+CREATE TABLE Project_progress (
+    Project_id SERIAL PRIMARY KEY,
+    source_id VARCHAR(20) NOT NULL REFERENCES water_source(source_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    Address VARCHAR(50),
+    Town VARCHAR(30),
+    Province VARCHAR(30),
+    Source_type VARCHAR(50),
+    Improvement VARCHAR(50),
+    Source_status VARCHAR(50) DEFAULT 'Backlog' CHECK (Source_status IN ('Backlog', 'In progress', 'Complete')),
+    Date_of_completion DATE,
+    Comments TEXT
+);
+```
+
+**Insight:**  
+A new table designed to manage project updates — enabling progress tracking from backlog to completion.
+
+---
+
+## ⚙️ Step 8 — Generating Improvement Recommendations  
+
+```sql
+SELECT
+    location.address,
+    location.town_name,
+    location.province_name,
+    water_source.source_id,
+    water_source.type_of_water_source,
+    well_pollution.results,
+    CASE
+        WHEN (type_of_water_source = 'well' AND well_pollution.results = 'Contaminated: Chemical') THEN 'Install RO filter'
+        WHEN (type_of_water_source = 'well' AND well_pollution.results = 'Contaminated: Biological') THEN 'Install UV and RO filter'
+        WHEN type_of_water_source = 'river' THEN 'Drill well'
+        WHEN type_of_water_source = 'shared_tap' AND time_in_queue >= 30 THEN CONCAT('Install ', FLOOR(time_in_queue/30), ' taps nearby')
+        WHEN type_of_water_source = 'tap_in_home_broken' THEN 'Diagnose local infrastructure'
+        ELSE NULL
+    END AS Improvement
+FROM water_source
+LEFT JOIN well_pollution ON water_source.source_id = well_pollution.source_id
+INNER JOIN visits ON water_source.source_id = visits.source_id
+INNER JOIN location ON location.location_id = visits.location_id
+WHERE visits.visit_count = 1;
+```
+
+**Insight:**  
+This intelligent query generates actionable insights for improving each water source, helping decision-makers prioritize interventions.
+
+---
+
+## ✅ Summary  
+
+The SQL pipeline successfully:  
+- Merged multi-table relationships into a coherent schema.  
+- Identified inconsistencies and bottlenecks.  
+- Quantified disparities in access across regions.  
+- Automated improvement recommendations for reporting dashboards.  
+
+This framework bridges **data integrity, analytics, and visualization**, powering data-driven decisions for sustainable community water management.
+ table |
+
+---
+
+## 🔍 Step 1 — Data Integration (Joining Core Tables)
+
+```sql
+SELECT
+    loc.province_name, 
+    loc.town_name,
+    v.visit_count,
+    v.location_id,
+    ws.type_of_water_source,
+    ws.number_of_people_served
+FROM location AS loc
+INNER JOIN visits AS v ON v.location_id = loc.location_id
+INNER JOIN water_source AS ws ON ws.source_id = v.source_id;
+```
+
+**Insight:**  
+This integration connects every field visit to its specific location and water source, forming the foundation for pollution and performance analysis.
+
+---
+
+## 📍 Step 2 — Filtering and Refinement  
+
+```sql
+SELECT
+    loc.province_name, 
+    loc.town_name,
+    ws.type_of_water_source,
+    ws.number_of_people_served
+FROM location AS loc
+INNER JOIN visits AS v ON v.location_id = loc.location_id
+INNER JOIN water_source AS ws ON ws.source_id = v.source_id
+WHERE v.visit_count = 1;
+```
+
+**Insight:**  
+Filtering visits to one per location ensures data consistency, eliminating duplicate observations and providing a single reliable record per source.
+
+---
+
+## 💧 Step 3 — Building Analytical Views  
+
+```sql
+CREATE VIEW combined_analysis_table AS
+SELECT
+    water_source.type_of_water_source AS source_type,
+    location.town_name,
+    location.province_name,
+    location.location_type,
+    water_source.number_of_people_served AS people_served,
+    visits.time_in_queue,
+    well_pollution.results
+FROM visits
+LEFT JOIN well_pollution ON well_pollution.source_id = visits.source_id
+INNER JOIN location ON location.location_id = visits.location_id
+INNER JOIN water_source ON water_source.source_id = visits.source_id
+WHERE visits.visit_count = 1;
+```
+
+**Insight:**  
+This view consolidates multiple datasets (visits, pollution tests, and sources) for faster query execution and easier Power BI integration.
+
+---
+
+## 📊 Step 4 — Provincial Aggregation Analysis  
+
+```sql
+WITH province_totals AS (
+SELECT province_name, SUM(people_served) AS total_ppl_serv
+FROM combined_analysis_table
+GROUP BY province_name
+)
+SELECT
+    ct.province_name,
+    ROUND((SUM(CASE WHEN source_type = 'river' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS river,
+    ROUND((SUM(CASE WHEN source_type = 'shared_tap' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS shared_tap,
+    ROUND((SUM(CASE WHEN source_type = 'tap_in_home' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS tap_in_home,
+    ROUND((SUM(CASE WHEN source_type = 'well' THEN people_served ELSE 0 END) * 100.0 / pt.total_ppl_serv), 0) AS well
+FROM combined_analysis_table ct
+JOIN province_totals pt ON ct.province_name = pt.province_name
+GROUP BY ct.province_name
+ORDER BY ct.province_name;
+```
+
+**Insight:**  
+Aggregating data at the provincial level revealed disparities in water access types. Some provinces heavily depend on shared taps or wells, indicating infrastructure gaps.
+
+---
+
+## 🏙️ Step 5 — Town-Level Water Access  
+
+```sql
+WITH town_totals AS (
+SELECT province_name, town_name, SUM(people_served) AS total_ppl_serv
+FROM combined_analysis_table
+GROUP BY province_name, town_name
+)
+SELECT
+    ct.province_name,
+    ct.town_name,
+    ROUND((SUM(CASE WHEN source_type = 'river' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS river,
+    ROUND((SUM(CASE WHEN source_type = 'shared_tap' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS shared_tap,
+    ROUND((SUM(CASE WHEN source_type = 'tap_in_home' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS tap_in_home,
+    ROUND((SUM(CASE WHEN source_type = 'well' THEN people_served ELSE 0 END) * 100.0 / tt.total_ppl_serv), 0) AS well
+FROM combined_analysis_table ct
+JOIN town_totals tt ON ct.province_name = tt.province_name AND ct.town_name = tt.town_name
+GROUP BY ct.province_name, ct.town_name
+ORDER BY ct.town_name;
+```
+
+**Insight:**  
+At the town level, the analysis uncovered local bottlenecks — towns with higher queue times or dependency on non-potable sources were prioritized for intervention.
+
+---
+
+## ⚙️ Step 6 — Improvement Recommendations  
+
+```sql
+SELECT
+    location.address,
+    location.town_name,
+    location.province_name,
+    water_source.source_id,
+    water_source.type_of_water_source,
+    well_pollution.results,
+    CASE
+        WHEN water_source.type_of_water_source = 'well' AND well_pollution.results = 'Contaminated: Chemical' THEN 'Install RO filter'
+        WHEN water_source.type_of_water_source = 'well' AND well_pollution.results = 'Contaminated: Biological' THEN 'Install UV filter'
+        WHEN water_source.type_of_water_source = 'river' THEN 'Drill Well'
+        WHEN water_source.type_of_water_source = 'shared_tap' AND visits.time_in_queue >= 30 THEN CONCAT('Install ', FLOOR(visits.time_in_queue / 30), ' taps nearby')
+        WHEN water_source.type_of_water_source = 'tap_in_home_broken' THEN 'Diagnose local infrastructure'
+        ELSE NULL
+    END AS improvement
+FROM water_source
+LEFT JOIN well_pollution ON water_source.source_id = well_pollution.source_id
+INNER JOIN visits ON water_source.source_id = visits.source_id
+INNER JOIN location ON location.location_id = visits.location_id
+WHERE visits.visit_count = 1;
+```
+
+**Insight:**  
+Each improvement action was designed using logical CASE structures — converting raw data into **actionable field operations** for engineers.
+
+---
+
+## 🧮 Step 7 — Progress Tracking Table  
+
+```sql
+CREATE TABLE Project_progress (
+    Project_id SERIAL PRIMARY KEY,
+    source_id VARCHAR(20) NOT NULL REFERENCES water_source(source_id) ON DELETE CASCADE ON UPDATE CASCADE,
+    Address VARCHAR(50),
+    Town VARCHAR(30),
+    Province VARCHAR(30),
+    Source_type VARCHAR(50),
+    Improvement VARCHAR(50),
+    Source_status VARCHAR(50) DEFAULT 'Backlog' CHECK (Source_status IN ('Backlog', 'In progress', 'Complete')),
+    Date_of_completion DATE,
+    Comments TEXT
+);
+```
+
+**Insight:**  
+This table allows continuous monitoring of repair, filtration, and construction projects — turning analysis into measurable action.
+
+---
+
+## 📈 Step 8 — Key Outcomes and Insights  
+
+✅ Identified **regions with poor access** to clean water.  
+✅ Highlighted **survey inconsistencies** across data collection teams.  
+✅ Generated **automated SQL-based recommendations** for remediation.  
+✅ Created a **live Power BI dashboard** showing performance across provinces.  
+✅ Established a **data-driven decision system** to guide resource allocation.
+
+---
+
+## 🧩 Summary  
+
+This SQL-driven workflow demonstrates how structured queries can uncover real-world public infrastructure challenges.  
+The findings powered Power BI dashboards, tracking **queue times, contamination levels, and improvement progress** — strengthening data governance and transparency in water management.
