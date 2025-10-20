@@ -61,5 +61,5 @@ Below is the visual schema representation used in this project:
 
 ![Database ERD](./ERD_MD_Water_Services.png)
 
-02_SQL_Analysis/ERD MD_Water_Services .png
+
 
